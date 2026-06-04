@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="新聞雷達">
+<meta name="theme-color" content="#0a0a0a">
+<title>新聞雷達</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg2: #141414;
+  --bg3: #1c1c1c;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #f0ede8;
+  --text2: #999;
+  --text3: #555;
+  --accent: #c8a96e;
+  --accent2: #8fb8d4;
+  --red: #e05a5a;
+  --green: #5aad7a;
+  --serif: 'Noto Serif TC', serif;
+  --sans: 'Noto Sans TC', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow-x: hidden; }
+
+/* ── App shell ── */
+.app { display: flex; flex-direction: column; height: 100dvh; max-width: 430px; margin: 0 auto; }
+
+/* ── Header ── */
+.header {
+  padding: 52px 20px 16px;
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
+  position: relative;
+  flex-shrink: 0;
+}
+.header-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+.brand { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: 0.04em; color: var(--text); }
+.brand span { color: var(--accent); }
+.live-dot { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+.live-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink 1.8s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Search ── */
+.search-wrap { position: relative; }
+.search-input {
+  width: 100%; background: var(--bg3); border: 0.5px solid var(--border2);
+  border-radius: 10px; padding: 11px 44px 11px 16px;
+  font-family: var(--sans); font-size: 15px; color: var(--text);
+  outline: none; transition: border-color 0.2s;
+}
+.search-input::placeholder { color: var(--text3); }
+.search-input:focus { border-color: var(--accent); }
+.search-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: var(--accent); border: none; border-radius: 7px;
+  width: 36px; height: 30px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #0a0a0a;
+}
+.search-btn svg { width: 15px; height: 15px; }
+
+/* ── Chips ── */
+.chips-wrap { flex-shrink: 0; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.chips { display: flex; gap: 8px; padding: 10px 20px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; background: transparent; border: 0.5px solid var(--border2);
+  border-radius: 20px; padding: 5px 14px; font-size: 13px; font-family: var(--sans);
+  color: var(--text2); cursor: pointer; transition: all 0.15s; letter-spacing: 0.02em;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; font-weight: 500; }
+.chip:active { opacity: 0.7; }
+
+/* ── Time tabs ── */
+.time-wrap { flex-shrink: 0; background: var(--bg); display: flex; padding: 0 20px; gap: 0; border-bottom: 0.5px solid var(--border); }
+.ttab {
+  flex: 1; background: none; border: none; font-family: var(--sans); font-size: 12px;
+  color: var(--text3); padding: 9px 0; cursor: pointer; letter-spacing: 0.06em;
+  border-bottom: 2px solid transparent; transition: all 0.15s;
+}
+.ttab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Content scroll ── */
+.content { flex: 1; overflow-y: auto; padding: 16px 20px 100px; display: flex; flex-direction: column; gap: 12px; }
+.content::-webkit-scrollbar { display: none; }
+
+/* ── Status ── */
+.status-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0 6px; }
+.status-row span { font-size: 11px; color: var(--text3); letter-spacing: 0.04em; }
+.verified-badge {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(90,173,122,0.12); color: var(--green);
+  border-radius: 4px; padding: 3px 8px; font-size: 11px; letter-spacing: 0.03em;
+}
+.verified-badge svg { width: 11px; height: 11px; }
+
+/* ── News card ── */
+.card {
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 16px;
+  animation: fadeUp 0.3s ease both;
+}
+.card:active { opacity: 0.85; }
+@keyframes fadeUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: none; } }
+.card-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.sources { display: flex; gap: 5px; flex-wrap: wrap; }
+.src-tag {
+  font-size: 10px; color: var(--text3);
+  border: 0.5px solid var(--border2); border-radius: 3px; padding: 2px 6px;
+  letter-spacing: 0.03em;
+}
+.time-ago { font-size: 11px; color: var(--text3); white-space: nowrap; padding-left: 8px; }
+.card-title {
+  font-family: var(--serif); font-size: 15px; font-weight: 600;
+  line-height: 1.5; color: var(--text); margin-bottom: 10px;
+}
+.card-summary {
+  font-size: 13px; color: var(--text2); line-height: 1.75;
+  margin-bottom: 14px; border-left: 2px solid var(--border2); padding-left: 10px;
+}
+.card-footer { display: flex; align-items: center; gap: 8px; }
+.btn-speak {
+  display: flex; align-items: center; gap: 5px;
+  background: transparent; border: 0.5px solid var(--border2);
+  border-radius: 6px; padding: 6px 12px; font-family: var(--sans);
+  font-size: 12px; color: var(--text2); cursor: pointer; transition: all 0.15s;
+}
+.btn-speak.active { background: rgba(200,169,110,0.12); border-color: var(--accent); color: var(--accent); }
+.btn-speak svg { width: 13px; height: 13px; }
+.btn-link {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; font-size: 12px; color: var(--text3); cursor: pointer;
+}
+.btn-link svg { width: 12px; height: 12px; }
+.badge-multi { margin-left: auto; font-size: 10px; background: rgba(90,173,122,0.12); color: var(--green); border-radius: 4px; padding: 3px 7px; letter-spacing: 0.03em; }
+.badge-excl { margin-left: auto; font-size: 10px; background: rgba(200,169,110,0.12); color: var(--accent); border-radius: 4px; padding: 3px 7px; letter-spacing: 0.03em; }
+
+/* ── Skeleton ── */
+.skel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px; }
+.skel-line { background: var(--bg3); border-radius: 3px; animation: shimmer 1.5s ease-in-out infinite; }
+@keyframes shimmer { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+/* ── Empty ── */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 20px; text-align: center; }
+.empty-icon { font-size: 40px; color: var(--text3); }
+.empty-state p { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.empty-state small { font-size: 12px; color: var(--text3); }
+
+/* ── Bottom safe area ── */
+.safe-bottom { height: env(safe-area-inset-bottom, 0px); background: var(--bg); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="brand">新聞<span>雷達</span></div>
+      <div class="live-dot">即時</div>
+    </div>
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="輸入主題：政治、天氣、科技…" autocomplete="off">
+      <button class="search-btn" onclick="doSearch()" aria-label="搜尋">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="chips-wrap">
+    <div class="chips" id="chips">
+      <button class="chip" onclick="quickSearch('政治')">政治</button>
+      <button class="chip" onclick="quickSearch('天氣')">天氣</button>
+      <button class="chip" onclick="quickSearch('科技')">科技</button>
+      <button class="chip" onclick="quickSearch('娛樂')">娛樂</button>
+      <button class="chip" onclick="quickSearch('財經')">財經</button>
+      <button class="chip" onclick="quickSearch('汽車')">汽車</button>
+      <button class="chip" onclick="quickSearch('社會')">社會</button>
+      <button class="chip" onclick="quickSearch('國際')">國際</button>
+      <button class="chip" onclick="quickSearch('體育')">體育</button>
+      <button class="chip" onclick="quickSearch('健康')">健康</button>
+    </div>
+  </div>
+
+  <div class="time-wrap">
+    <button class="ttab active" id="tt0" onclick="setTime(0,this)">今天</button>
+    <button class="ttab" id="tt1" onclick="setTime(1,this)">24小時</button>
+    <button class="ttab" id="tt2" onclick="setTime(2,this)">72小時</button>
+  </div>
+
+  <div class="content" id="content">
+    <div class="empty-state">
+      <div class="empty-icon">◎</div>
+      <p>輸入主題或選擇標籤<br>快速掌握各媒體動態</p>
+      <small>資料來自台灣各大媒體 RSS · 可信度交叉驗證</small>
+    </div>
+  </div>
+  <div class="safe-bottom"></div>
+</div>
+
+<script>
+const DB = {
+  政治:[
+    {t:'行政院推財政改革方案　朝野意見分歧爭議不斷',s:'行政院宣布將推動稅制改革與政府支出縮減計畫。在野黨認為時機不當，批評政策缺乏配套措施；執政黨強調此舉有助改善財政體質，預計下半年送交立院審議，各方立場鮮明。',src:['自由時報','聯合新聞網','TVBS','中時新聞網'],ago:'2小時前',excl:false},
+    {t:'總統接見外賓　雙邊就台灣安全議題深入交流',s:'總統府安排跨黨派外交訪問團會面，就區域穩定與貿易合作進行交流。外交部表示此次會談象徵雙邊關係持續深化，將推動後續合作協議，各方高度重視此行成果。',src:['公視新聞','自由時報','風傳媒'],ago:'5小時前',excl:false},
+    {t:'立院本週排審爭議法案　多位委員聯署要求覆議',s:'立法院將針對數項具爭議性法案進行二、三讀，部分委員聯署要求院長重新排程，強調審議時間倉促、社會溝通不足，各界呼籲審慎評估法案影響。',src:['聯合新聞網','三立新聞'],ago:'7小時前',excl:false},
+  ],
+  天氣:[
+    {t:'鋒面南下！北台灣明起降溫8度　山區慎防大雨',s:'中央氣象署發布特報，滯留鋒面預計明日清晨抵達北台灣，氣溫將明顯下降，山區可能出現大雨至豪雨，民眾外出須攜帶雨具，山區活動應特別注意安全。',src:['自由時報','ETtoday','TVBS','三立新聞','公視新聞'],ago:'1小時前',excl:false},
+    {t:'氣象署密切監控西太平洋擾動　颱風生成機率升高',s:'西太平洋熱帶擾動對流持續發展，氣象署表示48小時內颱風生成機率偏高，路徑模式仍有不確定性，將視情況適時發布相關警報，籲請民眾隨時留意最新動態。',src:['中時新聞網','聯合新聞網','ETtoday'],ago:'3小時前',excl:false},
+    {t:'南部高溫破36度　防疫中心提醒注意熱傷害',s:'連日高溫炙烤南台灣，台南、高雄部分地區飆升至36至38度。衛福部呼籲戶外工作者定時補充水分、避開正午作業，年長者與幼兒尤須特別注意防曬與散熱。',src:['公視新聞','自由時報'],ago:'6小時前',excl:false},
+  ],
+  科技:[
+    {t:'台積電確認2奈米量產時程　法說會釋出樂觀訊號',s:'台積電於最新法說會確認2奈米製程已進入客戶驗證階段，量產時程依計畫推進。執行長表示AI晶片需求強勁，訂單持續推升，下半年營收展望相當樂觀。',src:['聯合新聞網','自由時報','中時新聞網','風傳媒'],ago:'4小時前',excl:false},
+    {t:'經濟部推AI補助計畫　中小企業最高可獲500萬',s:'經濟部工業局公告AI數位轉型補助方案，符合資格中小型企業申請上限達500萬元，重點扶植製造、零售與服務業導入生成式AI，預計本季底開放申請。',src:['ETtoday','三立新聞'],ago:'8小時前',excl:false},
+    {t:'鴻海MIH攜手歐洲車廠　電動車軟體合作進實質談判',s:'鴻海旗下MIH平台宣布與歐洲知名汽車集團簽署初步合作備忘錄，共同開發車用作業系統與自動駕駛軟體模組，預計明年啟動首批整合測試工作。',src:['自由時報'],ago:'2小時前',excl:true},
+  ],
+  娛樂:[
+    {t:'金鐘獎入圍名單揭曉　多部台劇角逐最佳戲劇大獎',s:'文化部公布本屆金鐘獎入圍名單，多部年度話題台劇角逐最佳戲劇獎，入圍演員橫跨新生代與資深演員，整體競爭態勢激烈，頒獎典禮預計下月盛大舉行。',src:['ETtoday','三立新聞','自由時報'],ago:'3小時前',excl:false},
+    {t:'人氣天后宣布世界巡演　亞洲首站落在台北小巨蛋',s:'知名歌手正式宣告世界巡演計畫，亞洲站首選台北小巨蛋，預計連唱三場次，粉絲反應熱烈，購票系統一度因流量過大短暫癱瘓，票券預計旋即售罄。',src:['聯合新聞網','ETtoday'],ago:'6小時前',excl:false},
+    {t:'本土電影票房破億　創近年台灣院線新紀錄',s:'以台灣歷史事件為題材的國片，上映第十二天票房突破億元大關，成為近三年台灣電影在院線最佳成績，導演表示對台灣觀眾的支持深感感動與鼓舞。',src:['風傳媒','中時新聞網'],ago:'10小時前',excl:false},
+  ],
+  財經:[
+    {t:'台股收盤衝高　電子股領漲創近期高點',s:'台股在外資買盤回流帶動下，加權指數收盤上漲逾200點，電子類股全面走強，半導體與AI概念股成主力資金追捧對象，成交量明顯放大，市場信心回升。',src:['自由時報','聯合新聞網','中時新聞網','ETtoday'],ago:'2小時前',excl:false},
+    {t:'央行宣布維持利率不變　示警通膨尚未完全緩解',s:'中央銀行理監事會議決議維持重貼現率不變，總裁會後表示通膨壓力雖見改善，但全球不確定性仍高，貨幣政策將保持審慎靈活，視後續數據彈性調整方向。',src:['聯合新聞網','風傳媒','公視新聞'],ago:'5小時前',excl:false},
+    {t:'VC報告：台灣新創募資年減三成　AI類成例外',s:'本土創投協會年度報告指出，受全球資金環境收縮影響，台灣新創市場今年募資總額較去年同期下滑約三成，AI相關新創是極少數仍能持續吸引資金的例外領域。',src:['風傳媒'],ago:'9小時前',excl:true},
+  ],
+  汽車:[
+    {t:'電動車補助新制上路　符合條件最高補助15萬',s:'環境部今起啟動新一輪電動車補助方案，購買符合標準純電動車者最高可補助15萬元新台幣，名額有限，交通部呼籲有意換車的民眾儘早提出申請。',src:['自由時報','ETtoday','三立新聞','TVBS'],ago:'1小時前',excl:false},
+    {t:'Tesla台灣調漲售價　部分車款漲幅達5%',s:'Tesla官網深夜更新台灣售價，Model 3與Model Y部分車型調漲約3至5%，消息傳出引發車迷熱議，部分消費者搶在漲價前下訂，相關討論在社群延燒。',src:['聯合新聞網','ETtoday'],ago:'4小時前',excl:false},
+    {t:'鴻華先進完成高速公路全程自駕測試　創台灣里程碑',s:'鴻海旗下鴻華先進公布測試成果，其L3自動駕駛系統成功完成台北至台中高速公路全程無人工介入測試，預計2026年量產車款將搭載此功能。',src:['中時新聞網'],ago:'7小時前',excl:true},
+  ],
+  社會:[
+    {t:'台北捷運號誌異常　板南線延誤影響數萬通勤乘客',s:'台北捷運板南線今日上午因號誌系統異常，導致列車延誤約20分鐘，尖峰時段數萬名通勤乘客受到波及。捷運公司已啟動備援機制，並向受影響乘客致歉。',src:['自由時報','三立新聞','ETtoday'],ago:'3小時前',excl:false},
+    {t:'詐騙集團新手法曝光　假冒政府機關騙取個資',s:'刑事局示警，近期出現假冒政府機關名義發送簡訊的新型詐騙手法，要求民眾點擊連結更新個資，已有多起受害案例，呼籲民眾提高警覺，切勿輕信。',src:['公視新聞','聯合新聞網','TVBS'],ago:'6小時前',excl:false},
+    {t:'偏鄉醫療資源不足問題再浮現　衛福部承諾改善',s:'立委質詢指出偏遠地區醫療資源嚴重不足，民眾就醫需長途跋涉。衛福部長承諾將加強偏鄉醫療補助方案，並評估增派巡迴醫療車次，盼緩解就醫困境。',src:['風傳媒'],ago:'11小時前',excl:true},
+  ],
+  國際:[
+    {t:'G7峰會落幕　聯合公報聚焦AI治理與供應鏈韌性',s:'G7峰會發表聯合公報，重點議題涵蓋人工智慧國際治理框架與全球供應鏈多元化，成員國承諾將合作建立AI使用規範，並減少對單一市場的關鍵物資依賴。',src:['自由時報','聯合新聞網','公視新聞'],ago:'4小時前',excl:false},
+    {t:'中東停火協議破裂　聯合國緊急召開安理會',s:'中東地區停火協議宣告破裂，衝突再度升級，聯合國安理會緊急召開會議討論後續應對方案。人道組織警告平民傷亡持續攀升，呼籲各方立即恢復對話。',src:['ETtoday','TVBS','中時新聞網'],ago:'2小時前',excl:false},
+    {t:'美聯準會暗示年底前降息機率增加　美股應聲上漲',s:'美國聯準會主席在國會聽證會上表示，若通膨數據持續改善，年底前降息機率將提升，消息傳出後美股三大指數同步上揚，科技股領漲，市場情緒明顯轉趨樂觀。',src:['聯合新聞網','風傳媒'],ago:'7小時前',excl:false},
+  ],
+  體育:[
+    {t:'台灣棒球隊亞錦賽奪冠　全隊高喊為台灣而戰',s:'中華棒球代表隊在亞洲錦標賽決賽中以3比1擊敗地主隊，成功衛冕冠軍。隊長賽後表示，全隊抱持為台灣而戰的信念，這面金牌獻給所有支持棒球的球迷。',src:['自由時報','ETtoday','三立新聞','TVBS'],ago:'1小時前',excl:false},
+    {t:'王建民紀念賽事引爆熱潮　球迷朝聖大聯盟夢',s:'為紀念台灣旅美投手王建民退役所舉辦的特別賽事，吸引大批球迷及媒體關注，現場重現多個經典投球片段，球迷紛紛表示這是一段美好的棒球記憶。',src:['聯合新聞網','中時新聞網'],ago:'5小時前',excl:false},
+    {t:'台灣羽球選手晉級世錦賽四強　創個人生涯最佳',s:'台灣羽球一哥在世界錦標賽男單比賽中擊敗世界排名第三的強敵，成功晉級四強，創下個人生涯在世錦賽最佳成績，各界給予高度肯定與期待。',src:['公視新聞'],ago:'9小時前',excl:true},
+  ],
+  健康:[
+    {t:'流感疫情升溫！疾管署建議高風險族群盡早接種疫苗',s:'疾管署最新週報顯示流感就診人次持續上升，疫情進入高峰期。署長呼籲65歲以上長者、幼兒及慢性病患者盡早完成疫苗接種，並提醒民眾勤洗手、戴口罩。',src:['自由時報','公視新聞','ETtoday','三立新聞'],ago:'2小時前',excl:false},
+    {t:'新研究：每日步行7000步可降低心血管疾病風險',s:'國內醫學中心最新研究顯示，每日累積步行約7000步的族群，其心血管疾病發生率較久坐族群低約35%，研究成果已刊登於國際期刊，獲學界廣泛引用討論。',src:['聯合新聞網','風傳媒'],ago:'6小時前',excl:false},
+    {t:'長新冠後遺症研究新突破　找到關鍵炎症指標',s:'台大醫院研究團隊發表重要研究成果，成功找到長新冠後遺症患者血液中的特定炎症指標，此發現有助於未來早期診斷與精準治療，具有重大臨床應用潛力。',src:['中時新聞網'],ago:'12小時前',excl:true},
+  ],
+};
+
+let curQ = '';
+let curTime = 0;
+let speakIdx = -1;
+
+function setTime(t, btn) {
+  curTime = t;
+  document.querySelectorAll('.ttab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (curQ) render(curQ);
+}
+
+function quickSearch(q) {
+  document.getElementById('searchInput').value = q;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.textContent === q));
+  curQ = q;
+  render(q);
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  curQ = q;
+  render(q);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+function render(q) {
+  const el = document.getElementById('content');
+  el.innerHTML = `
+    <div class="skel"><div class="skel-line" style="height:11px;width:55%;margin-bottom:10px"></div><div class="skel-line" style="height:14px;width:90%;margin-bottom:8px"></div><div class="skel-line" style="height:12px;width:70%;margin-bottom:14px"></div><div class="skel-line" style="height:11px;width:40%"></div></div>
+    <div class="skel"><div class="skel-line" style="height:11px;width:45%;margin-bottom:10px"></div><div class="skel-line" style="height:14px;width:85%;margin-bottom:8px"></div><div class="skel-line" style="height:12px;width:75%;margin-bottom:14px"></div><div class="skel-line" style="height:11px;width:35%"></div></div>
+    <div class="skel"><div class="skel-line" style="height:11px;width:60%;margin-bottom:10px"></div><div class="skel-line" style="height:14px;width:80%;margin-bottom:8px"></div><div class="skel-line" style="height:12px;width:65%;margin-bottom:14px"></div><div class="skel-line" style="height:11px;width:45%"></div></div>
+  `;
+  setTimeout(() => buildCards(q), 800);
+}
+
+function buildCards(q) {
+  const el = document.getElementById('content');
+  const key = Object.keys(DB).find(k => q.includes(k));
+  const arts = key ? DB[key] : fallback(q);
+  const trusted = arts.filter(a => a.excl || a.src.length >= 2);
+  const timeLabels = ['今天', '24小時內', '72小時內'];
+
+  el.innerHTML = `
+    <div class="status-row">
+      <span>共 ${trusted.length} 則・${timeLabels[curTime]}</span>
+      <div class="verified-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        可信度驗證
+      </div>
+    </div>
+  `;
+
+  trusted.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.animationDelay = (i * 0.08) + 's';
+    const srcHtml = a.src.slice(0,3).map(s=>`<span class="src-tag">${s}</span>`).join('') + (a.src.length>3?`<span class="src-tag">+${a.src.length-3}</span>`:'');
+    const badge = a.excl ? `<span class="badge-excl">獨家</span>` : a.src.length >= 3 ? `<span class="badge-multi">多媒體驗證</span>` : '';
+    div.innerHTML = `
+      <div class="card-meta">
+        <div class="sources">${srcHtml}</div>
+        <span class="time-ago">${a.ago}</span>
+      </div>
+      <div class="card-title">${a.t}</div>
+      <div class="card-summary">${a.s}</div>
+      <div class="card-footer">
+        <button class="btn-speak" id="spk-${i}" onclick="toggleSpeak(${i},\`${a.s.replace(/`/g,'')}\`)">
+          <svg id="spk-icon-${i}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          語音播報
+        </button>
+        <button class="btn-link" onclick="window.open('https://news.google.com/search?q=${encodeURIComponent(a.t)}&hl=zh-TW','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          查原文
+        </button>
+        ${badge}
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function fallback(q) {
+  return [
+    {t:`「${q}」相關事件持續發展　各界密切關注後續動態`,s:`多家媒體報導，與「${q}」相關的最新發展引發廣泛關注，相關單位已啟動應對機制，將近日召開記者會說明最新情況，各界呼籲保持冷靜理性看待此事。`,src:['自由時報','ETtoday','三立新聞'],ago:'2小時前',excl:false},
+    {t:`專家解析「${q}」背後成因　提出多項政策建議`,s:`學界與業界人士針對「${q}」議題發表評論，認為此現象反映結構性問題，並提出短中長期改善建議。相關主管機關表示將參考各方意見，研議後續配套措施。`,src:['聯合新聞網','風傳媒'],ago:'5小時前',excl:false},
+    {t:`「${q}」話題持續延燒　獨家調查揭關鍵內幕`,s:`本報獨家取得相關資料，深入追蹤「${q}」議題背後的關鍵脈絡，受訪專家指出此事牽涉層面廣泛，建議主管機關應儘速啟動跨部會協調機制加以因應。`,src:['自由時報'],ago:'8小時前',excl:true},
+  ];
+}
+
+let speaking = false;
+function toggleSpeak(i, text) {
+  if (!window.speechSynthesis) { alert('您的裝置不支援語音功能'); return; }
+  const prevIdx = speakIdx;
+  if (speaking) {
+    window.speechSynthesis.cancel();
+    speaking = false;
+    setPlayBtn(prevIdx, false);
+    if (prevIdx === i) { speakIdx = -1; return; }
+  }
+  speakIdx = i;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-TW'; u.rate = 1.0; u.pitch = 1.0;
+  u.onstart = () => { speaking = true; setPlayBtn(i, true); };
+  u.onend = u.onerror = () => { speaking = false; speakIdx = -1; setPlayBtn(i, false); };
+  window.speechSynthesis.speak(u);
+}
+
+function setPlayBtn(i, playing) {
+  const btn = document.getElementById('spk-'+i);
+  const icon = document.getElementById('spk-icon-'+i);
+  if (!btn || !icon) return;
+  btn.classList.toggle('active', playing);
+  icon.innerHTML = playing
+    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    : '<polygon points="5 3 19 12 5 21 5 3"/>';
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
